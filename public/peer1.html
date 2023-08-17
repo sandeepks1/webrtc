@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Node.js Website</title>
+</head>
+
+<body>
+    <h1>peer1</h1>
+    <button id="sendButton">Send data</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var sendChannel;
+        async function onPageLoad() {
+
+            const socket = io();
+            const localConnection = new RTCPeerConnection({
+                iceServers: [{
+                    urls: "stun:stun.relay.metered.ca:80"
+                }, {
+                    urls: "turn:a.relay.metered.ca:80",
+                    username: "835c5389b98d89346569c234",
+                    credential: "TFEyZVKp00MJOBNJ",
+                }, {
+                    urls: "turn:a.relay.metered.ca:80?transport=tcp",
+                    username: "835c5389b98d89346569c234",
+                    credential: "TFEyZVKp00MJOBNJ",
+                }, {
+                    urls: "turn:a.relay.metered.ca:443",
+                    username: "835c5389b98d89346569c234",
+                    credential: "TFEyZVKp00MJOBNJ",
+                }, {
+                    urls: "turn:a.relay.metered.ca:443?transport=tcp",
+                    username: "835c5389b98d89346569c234",
+                    credential: "TFEyZVKp00MJOBNJ",
+                }, ],
+            });
+
+            try {
+
+
+                localConnection.onicecandidate = async(e) => {
+                    if (e.candidate) {
+                        const data = JSON.stringify(localConnection.localDescription);
+                        try {
+                            const response = await fetch('/connect', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: `data=${encodeURIComponent(data)}`,
+                            });
+
+                            if (response.ok) {
+                                console.log('Data sent successfully');
+                            } else {
+                                console.error('Failed to send data');
+                            }
+                        } catch (error) {
+                            console.error('Error sending data:', error);
+                        }
+                    }
+                };
+
+                sendChannel = localConnection.createDataChannel("sendChannel");
+                sendChannel.onmessage = (e) => console.log("message received: " + e.data);
+                sendChannel.onopen = () =>
+                    console.log("Channel opened");
+                // Send a message when the channel is open
+
+                sendChannel.onclose = () => console.log("channel closed");
+
+
+                const offer = await localConnection.createOffer();
+                await localConnection.setLocalDescription(offer);
+
+            } catch (error) {
+                console.error('Error in connectBtnA:', error);
+            }
+
+
+            // Listen for answersdp change event
+            socket.on('answersdpChange', (answersdp) => {
+                console.log('answersdpChange event received:', answersdp);
+                try {
+
+                    localConnection.setRemoteDescription(JSON.parse(answersdp))
+                        .then(() => console.log('Remote description set'))
+                        .catch((error) => console.error('Error setting remote description:', error));
+                } catch (error) {
+                    console.error('Error in answersdpChange event:', error);
+                }
+            });
+        }
+        window.addEventListener('load', onPageLoad);
+        // Function to send a message
+        document.getElementById('sendButton').addEventListener('click', () => {
+            if (sendChannel) {
+                console.log(sendChannel);
+                alert("sa")
+                sendChannel.send("Hello from user A!");
+            } else {
+                console.error('sendChannel is not defined');
+            }
+        });
+
+        // Function to send a message
+    </script>
+</body>
+
+</html>

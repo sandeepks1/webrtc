@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Node.js Website</title>
+</head>
+
+<body>
+    <h1>Simple Node.js Website</h1>
+    <input type="text" id="dataInput" placeholder="Enter data">
+
+    <button id="connectBtnA">Connect A</button>
+
+    <button id="connectBtnB">Connect B</button>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var receiveChannel;
+        async function onPageLoad() {
+            try {
+
+                const response = await fetch('/connectb');
+                const data = await response.json();
+                if (response.ok) {
+                    const offer = JSON.parse(data.offersdp);
+                    const remoteConnection = new RTCPeerConnection({
+                        iceServers: [{
+                            urls: "stun:stun.relay.metered.ca:80"
+                        }, {
+                            urls: "turn:a.relay.metered.ca:80",
+                            username: "835c5389b98d89346569c234",
+                            credential: "TFEyZVKp00MJOBNJ",
+                        }, {
+                            urls: "turn:a.relay.metered.ca:80?transport=tcp",
+                            username: "835c5389b98d89346569c234",
+                            credential: "TFEyZVKp00MJOBNJ",
+                        }, {
+                            urls: "turn:a.relay.metered.ca:443",
+                            username: "835c5389b98d89346569c234",
+                            credential: "TFEyZVKp00MJOBNJ",
+                        }, {
+                            urls: "turn:a.relay.metered.ca:443?transport=tcp",
+                            username: "835c5389b98d89346569c234",
+                            credential: "TFEyZVKp00MJOBNJ",
+                        }, ],
+                    });
+
+                    remoteConnection.setRemoteDescription(offer);
+                    remoteConnection.onicecandidate = async(e) => {
+                        if (e.candidate) {
+                            const data = JSON.stringify(remoteConnection.localDescription);
+                            try {
+                                const response = await fetch('/setanswer', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/x-www-form-urlencoded',
+                                    },
+                                    body: `data=${encodeURIComponent(data)}`,
+                                });
+
+                                if (response.ok) {
+                                    console.log('Answer sent successfully');
+                                } else {
+                                    console.error('Failed to send answer');
+                                }
+                            } catch (error) {
+                                console.error('Error sending answer:', error);
+                            }
+                        }
+                    };
+
+                    receiveChannel = remoteConnection.createDataChannel("receiveChannel");
+                    receiveChannel.onmessage = () => alert("message received: ");
+                    receiveChannel.onopen = () => console.log("channel send");
+                    receiveChannel.onclose = () => console.log("channel closed");
+
+                    const answer = await remoteConnection.createAnswer();
+                    await remoteConnection.setLocalDescription(answer);
+                }
+            } catch (error) {
+                console.error('Error in connectBtnB:', error);
+            }
+
+        }
+        window.addEventListener('load', onPageLoad);
+
+
+        // Listen for answersdp change even
+    </script>
+</body>
+
+</html>
